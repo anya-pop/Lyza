@@ -1,6 +1,20 @@
 /* overlay.css — Injected into every page. All selectors namespaced to avoid
-   clashing with host page styles. Aesthetic: warm, trustworthy, editorial —
-   deep teal + warm sand, a serif display accent, generous spacing. */
+   clashing with host page styles. Aesthetic: modern, light blue, clean —
+   sky blue + white, sharp sans-serif, generous spacing. */
+
+/* ---- Palette (reference)
+   --blue-deep:  #0369a1   sky-700
+   --blue-mid:   #0284c7   sky-600
+   --blue-vivid: #0ea5e9   sky-500
+   --blue-light: #bae6fd   sky-200
+   --blue-pale:  #e0f2fe   sky-100
+   --blue-ghost: #f0f9ff   sky-50
+   --text:       #0f172a   slate-900
+   --text-2:     #475569   slate-600
+   --text-muted: #94a3b8   slate-400
+   --border:     #e2e8f0   slate-200
+   --surface:    #ffffff
+*/
 
 #lyza-fab,
 #lyza-panel,
@@ -20,8 +34,8 @@
   border: none;
   cursor: pointer;
   z-index: 2147483646;
-  background: radial-gradient(circle at 30% 25%, #15786f, #0c4a44);
-  box-shadow: 0 8px 24px rgba(12, 74, 68, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4), 0 2px 6px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -29,14 +43,13 @@
 }
 #lyza-fab:hover {
   transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 12px 30px rgba(12, 74, 68, 0.5);
+  box-shadow: 0 12px 30px rgba(2, 132, 199, 0.5);
 }
 .lyza-fab-mark {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 26px;
-  font-weight: 700;
-  color: #f4ead5;
-  font-style: italic;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
 }
 
 /* Panel */
@@ -48,21 +61,21 @@
   max-width: 92vw;
   height: 100vh;
   z-index: 2147483647;
-  background: #fbf7ef;
-  box-shadow: -16px 0 48px rgba(12, 74, 68, 0.18);
+  background: #f0f9ff;
+  box-shadow: -16px 0 48px rgba(2, 132, 199, 0.12), -2px 0 8px rgba(0, 0, 0, 0.06);
   transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  color: #1c2522;
+  color: #0f172a;
 }
 #lyza-panel.lyza-open {
   right: 0;
 }
 
 .lyza-header {
-  background: linear-gradient(135deg, #0c4a44, #15786f);
-  color: #f4ead5;
-  padding: 20px;
+  background: linear-gradient(135deg, #0369a1, #0ea5e9);
+  color: #fff;
+  padding: 18px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -74,38 +87,39 @@
   gap: 12px;
 }
 .lyza-logo {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: rgba(244, 234, 213, 0.15);
+  background: rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-weight: 700;
-  font-size: 22px;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  letter-spacing: -1px;
 }
 .lyza-name {
-  font-family: Georgia, serif;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: -0.3px;
+  color: #fff;
 }
 .lyza-tag {
-  font-size: 11px;
-  opacity: 0.8;
+  font-size: 10.5px;
+  opacity: 0.82;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 .lyza-close {
   background: none;
   border: none;
-  color: #f4ead5;
-  font-size: 28px;
+  color: #fff;
+  font-size: 26px;
   cursor: pointer;
   line-height: 1;
-  opacity: 0.85;
+  opacity: 0.8;
+  padding: 0;
 }
 .lyza-close:hover {
   opacity: 1;
@@ -114,59 +128,62 @@
 .lyza-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 18px;
 }
 
 /* Empty / CTA state */
 .lyza-empty {
   text-align: center;
-  padding: 36px 12px;
+  padding: 32px 12px;
 }
 .lyza-empty-title {
-  font-family: Georgia, serif;
-  font-size: 22px;
+  font-size: 21px;
+  font-weight: 700;
   margin: 0 0 10px;
-  color: #0c4a44;
+  color: #0369a1;
+  letter-spacing: -0.3px;
 }
 .lyza-empty-sub {
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.6;
-  color: #4a5a55;
-  margin: 0 0 24px;
+  color: #475569;
+  margin: 0 0 22px;
 }
 .lyza-analyze-btn {
-  background: #d97742;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
   color: #fff;
   border: none;
-  padding: 13px 26px;
-  border-radius: 10px;
+  padding: 13px 28px;
+  border-radius: 12px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(217, 119, 66, 0.4);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
   transition: transform 0.15s, box-shadow 0.15s;
   display: block;
   margin: 0 auto 10px;
+  letter-spacing: -0.1px;
 }
 .lyza-analyze-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 7px 20px rgba(217, 119, 66, 0.5);
+  box-shadow: 0 7px 20px rgba(2, 132, 199, 0.45);
 }
 .lyza-walkthrough-btn {
   background: #fff;
-  color: #0c4a44;
-  border: 1.5px solid #15786f;
+  color: #0284c7;
+  border: 1.5px solid #bae6fd;
   padding: 11px 24px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
   display: block;
   margin: 0 auto;
 }
 .lyza-walkthrough-btn:hover {
-  background: #f4ead5;
+  background: #e0f2fe;
+  border-color: #7dd3fc;
   transform: translateY(-1px);
 }
 
@@ -177,54 +194,54 @@
   justify-content: center;
   gap: 10px;
   margin: 0 auto 18px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   background: #fff;
-  border: 1px solid #d8cdb8;
+  border: 1px solid #bae6fd;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  color: #0c4a44;
+  color: #0369a1;
   width: fit-content;
 }
 .lyza-lang-picker span {
-  font-size: 11.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #6a7570;
+  color: #94a3b8;
 }
 .lyza-lang-picker select {
   border: none;
   background: transparent;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
-  color: #0c4a44;
+  color: #0284c7;
   cursor: pointer;
   padding: 2px 18px 2px 4px;
   -webkit-appearance: none;
   appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%2315786f' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%230284c7' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 0 center;
 }
 .lyza-lang-picker select:focus {
   outline: none;
-  color: #15786f;
+  color: #0369a1;
 }
 
 /* Loading */
 .lyza-loading {
   text-align: center;
   padding: 48px 16px;
-  color: #4a5a55;
+  color: #475569;
 }
 .lyza-spinner {
-  width: 38px;
-  height: 38px;
-  border: 4px solid rgba(21, 120, 111, 0.2);
-  border-top-color: #15786f;
+  width: 36px;
+  height: 36px;
+  border: 3.5px solid #bae6fd;
+  border-top-color: #0284c7;
   border-radius: 50%;
   margin: 0 auto 18px;
-  animation: lyza-spin 0.8s linear infinite;
+  animation: lyza-spin 0.75s linear infinite;
 }
 @keyframes lyza-spin {
   to {
@@ -236,7 +253,7 @@
 .lyza-results {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   animation: lyza-fade 0.3s ease;
 }
 @keyframes lyza-fade {
@@ -247,28 +264,29 @@
 }
 .lyza-card {
   background: #fff;
-  border: 1px solid #ece2d0;
+  border: 1px solid #e0f2fe;
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.06);
 }
 .lyza-card-summary {
-  background: linear-gradient(135deg, #fff, #f6efe1);
-  border-color: #e4d8c0;
+  background: linear-gradient(145deg, #fff 60%, #f0f9ff);
+  border-color: #bae6fd;
 }
 .lyza-card-label {
   font-size: 10px;
   letter-spacing: 1.5px;
-  color: #d97742;
+  color: #0284c7;
   font-weight: 700;
-  margin-bottom: 8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 .lyza-summary {
-  font-family: Georgia, serif;
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
   margin: 0;
-  color: #1c2522;
+  color: #0f172a;
 }
 .lyza-card-head {
   display: flex;
@@ -276,33 +294,36 @@
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 .lyza-card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: #0c4a44;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
 }
 .lyza-text {
-  font-size: 14px;
-  line-height: 1.55;
-  color: #3a4a45;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #475569;
   margin: 0;
 }
 .lyza-list {
   margin: 0;
   padding-left: 18px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #3a4a45;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #334155;
 }
 .lyza-list li {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 /* Price rows */
 .lyza-price-row {
   padding: 10px 0;
-  border-bottom: 1px solid #f0e8d8;
+  border-bottom: 1px solid #e0f2fe;
 }
 .lyza-price-row:last-child {
   border-bottom: none;
@@ -310,16 +331,16 @@
 .lyza-price-orig {
   font-size: 17px;
   font-weight: 700;
-  color: #1c2522;
+  color: #0f172a;
 }
 .lyza-price-conv {
   font-size: 15px;
-  color: #15786f;
+  color: #0284c7;
   font-weight: 600;
 }
 .lyza-price-note {
   font-size: 12px;
-  color: #7a8580;
+  color: #94a3b8;
   margin-top: 2px;
 }
 
@@ -333,52 +354,52 @@
   white-space: nowrap;
 }
 .lyza-risk-low {
-  background: #e3f3e9;
-  color: #1e7a45;
+  background: #dcfce7;
+  color: #166534;
 }
 .lyza-risk-med {
-  background: #fdf0d9;
-  color: #b5780f;
+  background: #fef9c3;
+  color: #854d0e;
 }
 .lyza-risk-high {
-  background: #fce0dd;
-  color: #c0382b;
+  background: #fee2e2;
+  color: #991b1b;
 }
 .lyza-v-good {
-  background: #e3f3e9;
-  color: #1e7a45;
+  background: #dcfce7;
+  color: #166534;
 }
 .lyza-v-mid {
-  background: #fdf0d9;
-  color: #b5780f;
+  background: #fef9c3;
+  color: #854d0e;
 }
 .lyza-v-bad {
-  background: #fce0dd;
-  color: #c0382b;
+  background: #fee2e2;
+  color: #991b1b;
 }
 .lyza-v-unknown {
-  background: #ece7da;
-  color: #7a8580;
+  background: #f1f5f9;
+  color: #64748b;
 }
 .lyza-card-risk {
-  border-left: 3px solid #d97742;
+  border-left: 3px solid #f59e0b;
 }
 
 .lyza-disclaimer {
   font-size: 11px;
-  color: #9aa39e;
+  color: #94a3b8;
   text-align: center;
   font-style: italic;
   margin: 4px 0;
 }
 .lyza-card-error {
-  border-left: 3px solid #c0382b;
+  border-left: 3px solid #ef4444;
 }
 
 /* Chat */
 .lyza-chat {
   margin-top: 6px;
-  border-top: 1px solid #ece2d0;
+  border-top: 1px solid #e0f2fe;
   padding-top: 14px;
 }
 .lyza-chat-log {
@@ -398,15 +419,15 @@
 }
 .lyza-msg-user {
   align-self: flex-end;
-  background: #15786f;
-  color: #f4ead5;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #fff;
   border-bottom-right-radius: 3px;
 }
 .lyza-msg-assistant {
   align-self: flex-start;
   background: #fff;
-  border: 1px solid #ece2d0;
-  color: #1c2522;
+  border: 1px solid #e0f2fe;
+  color: #0f172a;
   border-bottom-left-radius: 3px;
 }
 .lyza-chat-input-row {
@@ -415,29 +436,32 @@
 }
 #lyza-chat-input {
   flex: 1;
-  border: 1px solid #d8cdb8;
+  border: 1px solid #bae6fd;
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 13.5px;
   background: #fff;
-  color: #1c2522;
+  color: #0f172a;
+  transition: border-color 0.15s;
 }
 #lyza-chat-input:focus {
   outline: none;
-  border-color: #15786f;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
 }
 #lyza-chat-send {
-  background: #0c4a44;
-  color: #f4ead5;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #fff;
   border: none;
   border-radius: 10px;
   padding: 0 16px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
 #lyza-chat-send:hover {
-  background: #15786f;
+  opacity: 0.88;
 }
 
 /* === v3 additions === */
@@ -450,9 +474,9 @@
   line-height: 1.5;
 }
 .lyza-banner-high {
-  background: #fce0dd;
-  color: #7a1f15;
-  border: 1px solid #f0a89e;
+  background: #fee2e2;
+  color: #7f1d1d;
+  border: 1px solid #fca5a5;
 }
 .lyza-banner-high strong { display: block; margin-bottom: 4px; font-size: 14px; }
 .lyza-banner-high p { margin: 0; }
@@ -464,46 +488,46 @@
   letter-spacing: 1px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #ece7da;
-  color: #6a7570;
+  background: #f1f5f9;
+  color: #64748b;
   margin-left: 6px;
 }
-.lyza-conf-high { background: #e3f3e9; color: #1e7a45; }
-.lyza-conf-mid { background: #fdf0d9; color: #b5780f; }
-.lyza-conf-low { background: #fce0dd; color: #c0382b; }
+.lyza-conf-high { background: #dcfce7; color: #166534; }
+.lyza-conf-mid  { background: #fef9c3; color: #854d0e; }
+.lyza-conf-low  { background: #fee2e2; color: #991b1b; }
 
 /* Voice button */
 .lyza-voice-btn {
   background: #fff;
-  border: 1px solid #d8cdb8;
+  border: 1px solid #bae6fd;
   border-radius: 999px;
   padding: 5px 12px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  color: #0c4a44;
-  transition: background 0.15s;
+  color: #0284c7;
+  transition: background 0.15s, border-color 0.15s;
 }
-.lyza-voice-btn:hover { background: #f4ead5; }
+.lyza-voice-btn:hover { background: #e0f2fe; border-color: #7dd3fc; }
 .lyza-voice-btn.lyza-speaking {
-  background: #15786f;
-  color: #f4ead5;
-  border-color: #15786f;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #fff;
+  border-color: #0284c7;
   animation: lyza-pulse 1.1s ease-in-out infinite;
 }
 @keyframes lyza-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(21,120,111,0.45); }
-  50% { box-shadow: 0 0 0 8px rgba(21,120,111,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.45); }
+  50% { box-shadow: 0 0 0 8px rgba(2, 132, 199, 0); }
 }
 
 /* Recommendation line + action bar */
-.lyza-card-actions { border-left: 3px solid #15786f; background: linear-gradient(135deg, #fff, #f0fbf8); }
+.lyza-card-actions { border-left: 3px solid #0284c7; background: linear-gradient(145deg, #fff, #f0f9ff); }
 .lyza-reco {
   margin: 0 0 12px;
-  font-family: Georgia, serif;
-  font-size: 15px;
-  line-height: 1.5;
-  color: #0c4a44;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: #0369a1;
   font-style: italic;
 }
 .lyza-actions-grid {
@@ -516,73 +540,78 @@
   align-items: center;
   gap: 8px;
   background: #fff;
-  border: 1px solid #d8cdb8;
+  border: 1px solid #bae6fd;
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: #0c4a44;
+  color: #0369a1;
   cursor: pointer;
   text-align: left;
-  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s, background 0.12s;
 }
 .lyza-action-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(12,74,68,0.1);
-  border-color: #15786f;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.14);
+  border-color: #7dd3fc;
+  background: #f0f9ff;
 }
 .lyza-action-icon { font-size: 16px; flex-shrink: 0; }
 .lyza-action-label { line-height: 1.25; }
 
 /* Memory card */
-.lyza-card-memory { border-left: 3px solid #a06acd; background: linear-gradient(135deg, #fff, #f7f2fc); }
+.lyza-card-memory { border-left: 3px solid #8b5cf6; background: linear-gradient(145deg, #fff, #faf5ff); }
 .lyza-memhits { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .lyza-memhit {
-  background: #fff;
-  border: 1px solid #ece2d0;
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
   border-radius: 10px;
   padding: 8px 10px;
 }
-.lyza-memhit-title { font-size: 13px; font-weight: 600; color: #1c2522; }
-.lyza-memhit-meta { font-size: 11px; color: #7a8580; margin-top: 2px; }
+.lyza-memhit-title { font-size: 13px; font-weight: 600; color: #0f172a; }
+.lyza-memhit-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 
 /* Breakdown details */
 .lyza-breakdown {
   margin-top: 10px;
   font-size: 12px;
-  color: #4a5a55;
+  color: #475569;
 }
 .lyza-breakdown summary {
   cursor: pointer;
   font-weight: 600;
-  color: #0c4a44;
+  color: #0369a1;
   padding: 4px 0;
+  list-style: none;
 }
+.lyza-breakdown summary::before { content: "▸ "; font-size: 10px; }
+.lyza-breakdown[open] summary::before { content: "▾ "; }
 .lyza-breakdown ul { margin: 6px 0 0 0; padding-left: 18px; }
 
 /* Live rate line */
-.lyza-price-rate { font-size: 11px; color: #7a8580; margin-top: 2px; font-style: italic; }
+.lyza-price-rate { font-size: 11px; color: #94a3b8; margin-top: 2px; font-style: italic; }
 
 /* Preview overlay (action confirm) */
 .lyza-preview-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(12,28,30,0.55);
+  background: rgba(15, 23, 42, 0.5);
   z-index: 2147483647;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   animation: lyza-fade 0.2s ease;
+  backdrop-filter: blur(2px);
 }
 .lyza-preview-card {
-  background: #fbf7ef;
-  border-radius: 16px;
+  background: #fff;
+  border-radius: 18px;
   width: min(520px, 100%);
   max-height: 86vh;
   overflow-y: auto;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
-  color: #1c2522;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  color: #0f172a;
   font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 .lyza-preview-head {
@@ -590,39 +619,38 @@
   align-items: center;
   gap: 10px;
   padding: 16px 18px;
-  border-bottom: 1px solid #ece2d0;
-  background: linear-gradient(135deg, #0c4a44, #15786f);
-  color: #f4ead5;
-  border-radius: 16px 16px 0 0;
+  background: linear-gradient(135deg, #0369a1, #0ea5e9);
+  color: #fff;
+  border-radius: 18px 18px 0 0;
 }
 .lyza-preview-icon { font-size: 18px; }
-.lyza-preview-head strong { flex: 1; font-size: 15px; }
+.lyza-preview-head strong { flex: 1; font-size: 15px; font-weight: 700; }
 .lyza-preview-x {
   background: none;
   border: none;
-  color: #f4ead5;
+  color: #fff;
   font-size: 24px;
   cursor: pointer;
   line-height: 1;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 .lyza-preview-x:hover { opacity: 1; }
 .lyza-preview-rationale {
   margin: 14px 18px 0;
   font-size: 13px;
   font-style: italic;
-  color: #4a5a55;
+  color: #64748b;
 }
 .lyza-preview-body {
   padding: 14px 18px;
   font-size: 13px;
   line-height: 1.55;
-  color: #1c2522;
+  color: #0f172a;
 }
 .lyza-preview-body > div { margin-bottom: 8px; }
 .lyza-preview-pre {
-  background: #fff;
-  border: 1px solid #ece2d0;
+  background: #f8fafc;
+  border: 1px solid #e0f2fe;
   border-radius: 10px;
   padding: 10px 12px;
   white-space: pre-wrap;
@@ -637,50 +665,53 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 18px 18px;
-  border-top: 1px solid #ece2d0;
-  background: #fbf7ef;
+  border-top: 1px solid #e0f2fe;
+  background: #fff;
   position: sticky;
   bottom: 0;
+  border-radius: 0 0 18px 18px;
 }
 .lyza-btn-primary {
-  background: #d97742;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
   color: #fff;
   border: none;
   border-radius: 10px;
-  padding: 10px 18px;
+  padding: 10px 20px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
-.lyza-btn-primary:hover { background: #c66832; }
+.lyza-btn-primary:hover { opacity: 0.88; }
 .lyza-btn-secondary {
   background: #fff;
-  color: #0c4a44;
-  border: 1px solid #d8cdb8;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
   border-radius: 10px;
   padding: 10px 18px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s;
 }
-.lyza-btn-secondary:hover { background: #f4ead5; }
+.lyza-btn-secondary:hover { background: #e0f2fe; }
 
 /* Toast */
 .lyza-toast {
   position: fixed;
   bottom: 88px;
   right: 24px;
-  background: #0c4a44;
-  color: #f4ead5;
+  background: #0369a1;
+  color: #fff;
   padding: 12px 18px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 600;
   z-index: 2147483647;
-  box-shadow: 0 8px 22px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 22px rgba(2, 132, 199, 0.3);
   animation: lyza-toast-in 0.2s ease;
 }
-.lyza-toast-error { background: #c0382b; }
+.lyza-toast-error { background: #dc2626; }
 @keyframes lyza-toast-in {
   from { opacity: 0; transform: translateY(8px); }
 }
@@ -693,8 +724,8 @@
   width: 360px;
   max-width: 92vw;
   background: #fff;
-  border: 1px solid #f0a89e;
-  border-left: 4px solid #c0382b;
+  border: 1px solid #fca5a5;
+  border-left: 4px solid #ef4444;
   border-radius: 14px;
   padding: 14px 16px;
   display: grid;
@@ -703,22 +734,22 @@
   gap: 8px 12px;
   align-items: center;
   z-index: 2147483646;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
   font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: #1c2522;
+  color: #0f172a;
   transform: translateX(120%);
   transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
 }
 .lyza-nudge.lyza-nudge-in { transform: translateX(0); }
 .lyza-nudge-icon { font-size: 20px; grid-row: 1 / span 2; }
 .lyza-nudge-body { grid-column: 2; grid-row: 1 / span 2; }
-.lyza-nudge-title { font-weight: 700; font-size: 13px; color: #c0382b; }
-.lyza-nudge-text { font-size: 12px; line-height: 1.5; color: #3a4a45; margin-top: 2px; }
+.lyza-nudge-title { font-weight: 700; font-size: 13px; color: #dc2626; }
+.lyza-nudge-text { font-size: 12px; line-height: 1.5; color: #475569; margin-top: 2px; }
 .lyza-nudge-cta {
   grid-column: 2 / span 2;
   grid-row: 3;
   margin-top: 4px;
-  background: #c0382b;
+  background: #ef4444;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -726,8 +757,9 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s;
 }
-.lyza-nudge-cta:hover { background: #a8311f; }
+.lyza-nudge-cta:hover { background: #dc2626; }
 .lyza-nudge-close {
   grid-column: 3;
   grid-row: 1;
@@ -735,7 +767,7 @@
   border: none;
   cursor: pointer;
   font-size: 18px;
-  color: #7a8580;
+  color: #94a3b8;
   line-height: 1;
   padding: 0;
 }
