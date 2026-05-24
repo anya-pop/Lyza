@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lyza — Embodied Agent Demo</title>
+  <link rel="stylesheet" href="../agent/agent-overlay.css" />
+  <style>
+    :root {
+      --ink: #1c2522;
+      --muted: #6a7570;
+      --bg: #f4f5f6;
+      --card: #fff;
+      --rust: #d97742;
+      --teal: #15786f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, ui-sans-serif, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    header.site {
+      background: #1f2a3a;
+      color: #fff;
+      padding: 18px 28px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    main { max-width: 880px; margin: 28px auto; padding: 0 20px; position: relative; }
+    .start-row {
+      position: absolute;
+      top: -56px;
+      right: 0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .lang-select {
+      background: #fff;
+      border: 1px solid #d8cdb8;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0c4a44;
+      cursor: pointer;
+    }
+    .start-btn {
+      background: var(--rust);
+      color: #fff;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 5px 16px rgba(217, 119, 66, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(217, 119, 66, 0.5); }
+    .narration {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      max-width: 560px;
+      width: calc(100% - 40px);
+      background: #1c2522;
+      color: #f4ead5;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.55;
+      box-shadow: 0 14px 32px rgba(0,0,0,0.28);
+      z-index: 2147483630;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+    .narration.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .listing {
+      background: var(--card);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.06);
+    }
+    .photo {
+      height: 280px;
+      background: linear-gradient(135deg, #5e7a99, #3a5275);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.55);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .body { padding: 22px 28px 28px; }
+    h1.title { margin: 0 0 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.2px; }
+    .address { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+    .price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 26px; }
+    .price { font-size: 36px; font-weight: 800; letter-spacing: -0.5px; }
+    .price-period { color: var(--muted); font-size: 16px; }
+    h2.section { margin: 22px 0 10px; font-size: 18px; font-weight: 700; }
+    ul.terms { padding-left: 20px; margin: 0 0 18px; }
+    ul.terms li { margin-bottom: 6px; }
+    .clause {
+      background: #fff3f0;
+      border: 1px solid #f0a89e;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      margin-bottom: 18px;
+      color: #6e2a20;
+    }
+    .description { margin-bottom: 22px; }
+    .seller-message {
+      background: #fef6e4;
+      border: 1px solid #e8c98a;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #6a4f12;
+    }
+    footer.site { text-align: center; padding: 28px 0 40px; color: var(--muted); font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <header class="site">RentSpot</header>
+  <main>
+    <div class="start-row">
+      <select id="lang" class="lang-select" aria-label="Narration language">
+        <option value="en">English</option>
+        <option value="hi" selected>हिन्दी (Hindi)</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="pt">Português</option>
+        <option value="zh">中文</option>
+        <option value="ar">العربية</option>
+      </select>
+      <button id="start" class="start-btn">▶ Start guided walkthrough</button>
+    </div>
+
+    <article class="listing">
+      <div class="photo">[ apartment photos ]</div>
+      <div class="body">
+        <h1 class="title">Cozy 1-Bedroom Apartment — Downtown</h1>
+        <p class="address">123 King Street West, Toronto, ON</p>
+
+        <div class="price-row">
+          <span class="price">CA$2,400</span>
+          <span class="price-period">/ month</span>
+        </div>
+
+        <h2 class="section">Included</h2>
+        <ul class="terms">
+          <li>Utilities included (heat, water, hydro)</li>
+          <li>Furnished, available immediately</li>
+          <li>One parking spot</li>
+        </ul>
+
+        <h2 class="section">Deposit policy</h2>
+        <p class="clause">A non-refundable security deposit of two months' rent (CA$4,800) must be sent by Interac e-Transfer to hold the unit before any viewing can be arranged. The deposit is retained by the landlord under all circumstances.</p>
+
+        <h2 class="section">Description</h2>
+        <p class="description">Beautiful sunlit unit in the heart of downtown, steps from the subway and university campus. Hardwood floors, modern kitchen, in-suite laundry.</p>
+
+        <h2 class="section">Message from the landlord</h2>
+        <p class="seller-message">Hello! I am currently working abroad and cannot show the apartment in person, but my agent will mail you the keys once the deposit is received. Please send the e-Transfer today as there is a lot of interest.</p>
+      </div>
+    </article>
+  </main>
+  <footer class="site">RentSpot — listings are posted by users and not verified.</footer>
+
+  <div id="narration" class="narration" role="status" aria-live="polite"></div>
+
+  <script src="../agent/agent-eyes.js"></script>
+  <script src="../agent/agent-hands.js"></script>
+  <script src="../agent/guided-walkthrough.js"></script>
+  <script>
+    // ElevenLabs is called directly from this harness page — no extension required.
+    const ELEVENLABS_KEY = "sk_8ebbf95951eec0b3030b52b8b8e4321e17fa262fd007d009";
+    const ELEVENLABS_VOICE = "JBFqnCBsd6RMkjVDRZzb"; // Rachel — multilingual
+    const ELEVENLABS_URL = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE}`;
+
+    const narration = document.getElementById("narration");
+    let narrationTimeout = null;
+    let activeAudio = null;
+
+    function showText(text) {
+      narration.textContent = text;
+      narration.classList.add("visible");
+      clearTimeout(narrationTimeout);
+      narrationTimeout = setTimeout(() => narration.classList.remove("visible"), 5500);
+    }
+
+    function browserSpeak(text) {
+      try {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.rate = 1.0;
+        window.speechSynthesis.speak(utt);
+      } catch (e) { /* no-op */ }
+    }
+
+    async function elevenLabsSpeak(text) {
+      try {
+        const resp = await fetch(ELEVENLABS_URL, {
+          method: "POST",
+          headers: {
+            "xi-api-key": ELEVENLABS_KEY,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+          },
+          body: JSON.stringify({
+            text: text.slice(0, 900),
+            model_id: "eleven_multilingual_v2",
+            voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0, use_speaker_boost: true }
+          })
+        });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        if (activeAudio) { try { activeAudio.pause(); } catch {} URL.revokeObjectURL(activeAudio.src); }
+        activeAudio = new Audio(url);
+        activeAudio.addEventListener("ended", () => URL.revokeObjectURL(url));
+        await activeAudio.play();
+      } catch (e) {
+        console.warn("[Lyza demo] ElevenLabs failed, falling back to browser TTS:", e);
+        browserSpeak(text);
+      }
+    }
+
+    function speak(text) {
+      showText(text);
+      elevenLabsSpeak(text);
+    }
+
+    // Restore last chosen language
+    const langSel = document.getElementById("lang");
+    try {
+      const saved = localStorage.getItem("lyza_demo_lang");
+      if (saved) langSel.value = saved;
+    } catch {}
+    langSel.addEventListener("change", () => {
+      try { localStorage.setItem("lyza_demo_lang", langSel.value); } catch {}
+    });
+
+    document.getElementById("start").addEventListener("click", async () => {
+      const lang = langSel.value || "hi";
+      const plan = window.LyzaWalkthrough.buildDemoPlan({ language: lang });
+      await window.LyzaWalkthrough.run(plan, { onNarrate: speak });
+    });
+  </script>
+</body>
+</html>

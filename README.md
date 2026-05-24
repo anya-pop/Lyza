@@ -37,14 +37,13 @@ currencies, language, fluency, and life stage.
 2. Toggle **Developer mode** (top-right)
 3. Click **Load unpacked** and select this `lyza/` folder
 4. Click the Lyza icon in the toolbar:
-   - **Settings tab** → paste your Gemini API key (`AIza...`) → Save. Get a free key at
-     [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
+   - **Settings tab** → a bundled demo Gemini key is used by default, or paste your own (`AIza...`) → Save
    - **Profile tab** → set your country, currencies, language → Save
 5. Visit any marketplace / rental / banking / job page
 6. Click the floating **L** button (bottom-right) → **Analyze this page**
 
-> The API key is stored locally in your browser only (`chrome.storage.local`) and is
-> sent only to Google. For a hackathon demo this direct-from-browser approach keeps
+> Any custom API key you provide is stored locally in your browser only (`chrome.storage.local`)
+> and is sent only to Google. For a hackathon demo this direct-from-browser approach keeps
 > the stack to a single moving part. For production you'd proxy calls through a backend.
 
 ---

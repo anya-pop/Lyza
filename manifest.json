@@ -1,10 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Lyza — Financial Acclimation Assistant",
-  "version": "1.0.0",
-  "description": "Real-time financial assistant for newcomers: multilingual summaries, currency conversion, price context, and scam risk scoring on any webpage.",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["<all_urls>"],
+  "name": "Lyza — Financial Guardian Agent",
+  "version": "5.0.0",
+  "description": "Embodied financial agent for newcomers: scrolls, highlights and fills the page for you; multilingual analysis; live FX; rigorous fraud detection; one-tap actions across Calendar, Gmail and Drive.",
+  "permissions": ["storage", "activeTab", "scripting", "tabs", "alarms"],
+  "host_permissions": [
+    "<all_urls>",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.elevenlabs.io/*",
+    "https://api.frankfurter.dev/*",
+    "https://rdap.org/*",
+    "https://safebrowsing.googleapis.com/*"
+  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -25,9 +32,24 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
-      "css": ["content/overlay.css"],
+      "js": [
+        "agent/agent-eyes.js",
+        "agent/agent-hands.js",
+        "agent/agent-hands-write.js",
+        "agent/guided-walkthrough.js",
+        "content/content.js"
+      ],
+      "css": [
+        "agent/agent-overlay.css",
+        "content/overlay.css"
+      ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/sprites/*.png"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

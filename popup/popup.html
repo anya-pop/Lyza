@@ -18,13 +18,81 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab active" data-tab="profile">Profile</button>
+      <button class="tab active" data-tab="picture">Picture</button>
+      <button class="tab" data-tab="missions">Missions</button>
+      <button class="tab" data-tab="profile">Profile</button>
       <button class="tab" data-tab="settings">Settings</button>
     </nav>
 
     <main>
+      <!-- PICTURE TAB (dashboard) -->
+      <section id="tab-picture" class="tabpane active">
+        <p class="intro">Your financial picture — everything Lyza has watched over for you.</p>
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Items analyzed</div></div>
+          <div class="stat-card stat-danger"><div class="stat-val" id="stat-scams">0</div><div class="stat-lbl">Scams avoided</div></div>
+          <div class="stat-card stat-warn"><div class="stat-val" id="stat-overprice">—</div><div class="stat-lbl">Overpricing flagged</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-kinds">—</div><div class="stat-lbl">Most-seen category</div></div>
+        </div>
+        <h3 class="section-title">Recent decisions</h3>
+        <ul class="recent-list" id="recent-list">
+          <li class="recent-empty">Nothing yet. Open a page and click <b>Analyze</b> to start building your picture.</li>
+        </ul>
+        <button id="clear-memory" class="secondary">Clear memory</button>
+      </section>
+
+      <!-- MISSIONS TAB -->
+      <section id="tab-missions" class="tabpane">
+        <p class="intro">Delegate goals to Lyza. She works in the background as you browse and only stops you for approvals.</p>
+
+        <fieldset>
+          <legend>New mission</legend>
+          <label>Goal <span class="hint">in your own words</span>
+            <textarea id="mission-goal" rows="3" placeholder="e.g. Find a safe 1-bed under $1,900 near campus"></textarea>
+          </label>
+          <div class="mission-constraints">
+            <label>Budget <input type="number" id="mission-budget" placeholder="1900" /></label>
+            <label>Currency <select id="mission-currency"></select></label>
+            <label>Region <input type="text" id="mission-region" placeholder="e.g. Toronto, ON" /></label>
+          </div>
+          <button id="create-mission" class="primary">Delegate to Lyza</button>
+          <p id="mission-create-msg" class="saved-msg"></p>
+        </fieldset>
+
+        <h3 class="section-title">Active missions</h3>
+        <ul class="mission-list" id="mission-list">
+          <li class="mission-empty">No active missions yet. Create one above.</li>
+        </ul>
+      </section>
+
+      <!-- Mission detail modal — hidden until a mission is clicked -->
+      <div id="mission-detail" class="mission-detail-modal" hidden>
+        <div class="mission-detail-card">
+          <header>
+            <h2 id="md-goal"></h2>
+            <button id="md-close" class="mission-detail-close" aria-label="Close">&times;</button>
+          </header>
+          <div class="md-status-row">
+            <span id="md-status" class="mission-status-badge"></span>
+            <span id="md-stats" class="mission-stats"></span>
+          </div>
+          <div id="md-escalation" class="md-escalation" hidden>
+            <!-- escalation card rendered here when status === awaiting_user -->
+          </div>
+          <h3 class="md-section">Plan</h3>
+          <ol id="md-plan" class="md-plan-list"></ol>
+          <h3 class="md-section">Activity log <span class="hint">(proof of agency)</span></h3>
+          <ul id="md-log" class="md-log-list"></ul>
+          <div class="md-actions">
+            <button id="md-pause" class="secondary">Pause</button>
+            <button id="md-resume" class="secondary">Resume</button>
+            <button id="md-cancel" class="danger">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- PROFILE TAB -->
-      <section id="tab-profile" class="tabpane active">
+      <section id="tab-profile" class="tabpane">
         <p class="intro">Set this once. Lyza uses it to tailor every page analysis to your situation.</p>
 
         <fieldset>
@@ -88,8 +156,8 @@
       <section id="tab-settings" class="tabpane">
         <fieldset>
           <legend>Gemini API key</legend>
-          <p class="hint">Lyza calls Google Gemini directly from your browser. Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>. Your key is stored locally in this browser only and sent only to Google.</p>
-          <label>API key
+          <p class="hint">Lyza calls Google Gemini directly from your browser. A default demo key is already bundled, so you can skip this step. If you want to use your own key, paste it here — it is stored locally in this browser only and sent only to Google.</p>
+          <label>API key (optional override)
             <input type="password" id="apiKey" placeholder="AIza..." />
           </label>
           <button id="saveKey" class="primary">Save key</button>

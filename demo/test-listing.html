@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RentSpot — Cozy 1-Bedroom Apartment, Downtown</title>
+  <style>
+    :root {
+      --ink: #1c2522;
+      --muted: #6a7570;
+      --line: #ece2d0;
+      --bg: #f4f5f6;
+      --card: #fff;
+      --teal: #15786f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, ui-sans-serif, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    header.site {
+      background: #1f2a3a;
+      color: #fff;
+      padding: 18px 28px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    main { max-width: 880px; margin: 28px auto; padding: 0 20px; }
+    .listing {
+      background: var(--card);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.06);
+    }
+    .photo {
+      height: 280px;
+      background: linear-gradient(135deg, #5e7a99, #3a5275);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.55);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .body { padding: 22px 28px 28px; }
+    h1.title {
+      margin: 0 0 4px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+    .address { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 26px;
+    }
+    .price {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .price-period { color: var(--muted); font-size: 16px; }
+    h2.section { margin: 22px 0 10px; font-size: 18px; font-weight: 700; }
+    ul.terms { padding-left: 20px; margin: 0 0 18px; }
+    ul.terms li { margin-bottom: 6px; }
+    .clause {
+      background: #fff3f0;
+      border: 1px solid #f0a89e;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      margin-bottom: 18px;
+      color: #6e2a20;
+    }
+    .description { margin-bottom: 22px; }
+    .seller-message {
+      background: #fef6e4;
+      border: 1px solid #e8c98a;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #6a4f12;
+    }
+    footer.site {
+      text-align: center;
+      padding: 28px 0 40px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+  </style>
+</head>
+<body>
+  <header class="site">RentSpot</header>
+  <main>
+    <article class="listing">
+      <div class="photo">[ apartment photos ]</div>
+      <div class="body">
+        <h1 class="title">Cozy 1-Bedroom Apartment — Downtown</h1>
+        <p class="address">123 King Street West, Toronto, ON</p>
+
+        <div class="price-row">
+          <span class="price">CA$2,400</span>
+          <span class="price-period">/ month</span>
+        </div>
+
+        <h2 class="section">Included</h2>
+        <ul class="terms">
+          <li>Utilities included (heat, water, hydro)</li>
+          <li>Furnished, available immediately</li>
+          <li>One parking spot</li>
+        </ul>
+
+        <h2 class="section">Deposit policy</h2>
+        <p class="clause">A non-refundable security deposit of two months' rent (CA$4,800) must be sent by Interac e-Transfer to hold the unit before any viewing can be arranged. The deposit is retained by the landlord under all circumstances.</p>
+
+        <h2 class="section">Description</h2>
+        <p class="description">Beautiful sunlit unit in the heart of downtown, steps from the subway and university campus. Hardwood floors, modern kitchen, in-suite laundry.</p>
+
+        <h2 class="section">Message from the landlord</h2>
+        <p class="seller-message">Hello! I am currently working abroad and cannot show the apartment in person, but my agent will mail you the keys once the deposit is received. Please send the e-Transfer today as there is a lot of interest.</p>
+      </div>
+    </article>
+  </main>
+  <footer class="site">RentSpot — listings are posted by users and not verified.</footer>
+</body>
+</html>

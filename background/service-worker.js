@@ -1,17 +1,41 @@
-// service-worker.js — Background orchestration layer.
-// Receives scraped page content from the content script, builds a single
-// structured prompt for the Gemini API, and returns parsed JSON analysis.
+// service-worker.js — v3 agentic background.
+// Coordinates: 3-layer fraud engine + LLM analysis + real FX + memory +
+// connector action executors (Calendar/Gmail/Drive via template URLs).
 
 import { STORAGE_KEYS, DEFAULT_PROFILE, CURRENCIES, LANGUAGES } from "../config.js";
+import {
+  runUrlHeuristics,
+  checkSafeBrowsing,
+  checkDomainAge,
+  fuseRisk,
+  getFxRate,
+  formatMoney,
+  loadMemory,
+  saveMemoryRecord,
+  clearMemory,
+  findMemoryHits,
+  summarizeMemory
+} from "./fraud-engine.js";
+
+// ---- v4 agent layer imports ---------------------------------------------
+import * as missions from "../agent/missions.js";
+import * as loop from "../agent/loop.js";
+import * as tools from "../agent/tools.js";
 
 const MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-// Get a free Gemini API key at https://aistudio.google.com/app/apikey
-// Either paste it here, or set it via the Lyza popup → Settings (stored in
-// chrome.storage.local). The popup value takes precedence over this constant.
-const DEFAULT_API_KEY = "YOUR_GEMINI_API_KEY";
+const DEFAULT_API_KEY = "AIzaSyCcgjZJSlKpVY-YmcbMltjtLKXY73MzCV8";
 
-// ---- Helpers -------------------------------------------------------------
+// Google Safe Browsing v4 — fraud-engine Layer 2 blocklist signal.
+const DEFAULT_SAFEBROWSING_KEY = "AIzaSyA_ruDMFXqJ_wvgS_hddu2XRdGv8BJ1M5E";
+
+// ElevenLabs TTS — native-language narration for the guided walkthrough.
+const ELEVENLABS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+const ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // Rachel — multilingual
+const ELEVENLABS_MODEL = "eleven_multilingual_v2";
+const DEFAULT_ELEVENLABS_KEY = "sk_8ebbf95951eec0b3030b52b8b8e4321e17fa262fd007d009";
+
+// ---- Profile / key helpers ----------------------------------------------
 
 async function getProfile() {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.PROFILE);
@@ -23,16 +47,24 @@ async function getApiKey() {
   return lyza_api_key || DEFAULT_API_KEY;
 }
 
+async function getSafeBrowsingKey() {
+  const { lyza_safebrowsing_key } = await chrome.storage.local.get("lyza_safebrowsing_key");
+  return lyza_safebrowsing_key || DEFAULT_SAFEBROWSING_KEY;
+}
+
+async function getElevenLabsKey() {
+  const { lyza_elevenlabs_key } = await chrome.storage.local.get("lyza_elevenlabs_key");
+  return lyza_elevenlabs_key || DEFAULT_ELEVENLABS_KEY;
+}
+
 function labelFor(list, value, key = "value", lbl = "label") {
   const found = list.find((x) => x[key] === value);
   return found ? found[lbl] : value;
 }
-
 function currencyLabel(code) {
   const c = CURRENCIES.find((x) => x.code === code);
   return c ? `${c.label} (${c.code}, ${c.symbol})` : code;
 }
-
 function languageLabel(code) {
   const l = LANGUAGES.find((x) => x.code === code);
   return l ? l.label : code;
@@ -41,9 +73,12 @@ function languageLabel(code) {
 // ---- Prompt construction -------------------------------------------------
 
 function buildSystemPrompt(profile) {
-  return `You are Lyza, a financial acclimation assistant that helps newcomers to a country understand webpages they are browsing — marketplace listings, rental ads, banking offers, job postings, and online deals.
+  const lang = languageLabel(profile.language);
+  return `You are Lyza, an agentic financial guardian for newcomers. You DECIDE, ACT and REMEMBER.
+For each page (marketplace listings, rentals, banking offers, jobs, bills, online deals), produce
+a structured analysis AND propose concrete one-tap actions the user can take. Be decisive, not wishy-washy.
 
-The user's profile:
+User profile:
 - Living in: ${profile.province}, ${profile.country}
 - Newcomer status: ${labelFor(
     [
@@ -58,67 +93,97 @@ The user's profile:
 - Time in country: ${profile.timeInCountry}
 - Local currency: ${currencyLabel(profile.localCurrency)}
 - Home currency: ${currencyLabel(profile.homeCurrency)}
-- Preferred language for output: ${languageLabel(profile.language)}
+- Preferred output language: ${lang}
 - Local-language fluency: ${profile.fluency}
-- Simplify explanations: ${profile.simplify ? "YES — use plain, simple words, short sentences" : "no, normal detail is fine"}
+- Simplify explanations: ${profile.simplify ? "YES — plain, simple, short" : "no, normal detail is fine"}
 - Housing situation: ${profile.housing}
 - Employment: ${profile.job}
 - Immigration stage: ${profile.immigrationStage}
 
-Your job: analyze the webpage content provided by the user and return a financial-acclimation analysis.
-
 Rules:
-- Write ALL human-readable output (summary, insights, explanations, tips) in the user's preferred language: ${languageLabel(profile.language)}.
-- Be honest and cautious about scam risk. Newcomers are frequent fraud targets. Flag classic red flags: requests to wire money or pay deposits before viewing, off-platform payment, prices far below market, urgency/pressure, requests for personal documents, "I'm out of the country" stories, overpayment scams, too-good-to-be-true deals.
-- For pricing, reason about typical local market norms for the user's region. You do not have live data, so be clear when an estimate is approximate. Give a realistic range, not false precision.
-- Convert any prices you find from local currency to the user's home currency using a reasonable approximate exchange rate, and clearly label it as approximate.
-- For rental/legal questions, give general educational info about tenant rights in the user's region, and ALWAYS note that local tenant boards / settlement agencies are the authoritative source. Do not give definitive legal advice.
-- Keep it practical and reassuring without being naive.
+- Write ALL human-readable output (summary, recommendation, explanations, tips, action labels, action payload text) in ${lang}.
+- Be honest about scam risk. Flag classic red flags: wire/e-transfer requests, off-platform payment, prices far below market, urgency, document requests, "I'm out of the country", overpayment, too-good-to-be-true deals.
+- For pricing, reason about local market norms for the region. Be clear when an estimate is approximate; give realistic ranges.
+- Return prices as STRUCTURED numbers (amount + currency + period). Do NOT pre-format converted prices — the runtime does live FX conversion.
+- For rental/legal items, note local tenant boards / settlement agencies are the authoritative source. Do not give definitive legal advice.
+- If memory hits are provided, REASON ACROSS THEM. Mention duplicate listings, repeat sellers, or how this price compares to past observations.
+- The recommendation must be DECISIVE (one sentence: "Proceed cautiously", "Walk away", "Worth visiting in person", etc.).
+- Propose 2-4 concrete actions appropriate for the page type and risk level. Actions must be REAL next steps a newcomer would actually want.
 
-You MUST respond with ONLY a valid JSON object (no markdown, no code fences, no prose before or after) in exactly this shape:
+You MUST respond with ONLY a valid JSON object (no markdown, no code fences, no prose):
 
 {
-  "pageType": "marketplace | rental | banking | job | shopping | other",
-  "summary": "2-4 sentence plain-language summary in the user's language of what this page is offering",
+  "pageType": "marketplace | rental | banking | job | bill | shopping | other",
+  "kind": "rental | marketplace | banking | job | bill | shopping | other",
+  "summary": "2-4 sentence plain-language summary in ${lang} of what this page is offering",
+  "confidence": "low | medium | high",
   "prices": [
-    {
-      "original": "CA$2,400/month",
-      "converted": "≈ ₹148,000/month",
-      "note": "short note in user's language"
-    }
+    { "amount": 2400, "currency": "CAD", "period": "month | one_time | year | hour", "note": "short note in ${lang}" }
   ],
   "priceContext": {
     "verdict": "below_average | average | above_average | unknown",
-    "explanation": "1-3 sentences in user's language about how this price compares to local norms, with approximate percentage if reasonable"
+    "explanation": "1-3 sentences in ${lang} comparing to local norms"
   },
-  "scamRisk": {
-    "level": "low | medium | high",
+  "contentScamSignals": {
     "score": 0,
-    "reasons": ["short reason 1", "short reason 2"]
+    "reasons": ["specific phrases or patterns found in the page content"]
   },
-  "tips": ["1-3 short, actionable tips in the user's language tailored to a newcomer"],
-  "disclaimer": "one short sentence in user's language reminding this is AI guidance, not financial/legal advice"
+  "flaggedPhrases": ["exact short substrings copied from the page that are suspicious"],
+  "sellerHandle": "phone number, email, or username if the page exposes one, else empty",
+  "memoryInsights": ["1-3 sentences in ${lang} referencing the memory hits, if any are relevant"],
+  "recommendation": "ONE decisive sentence in ${lang} — what Lyza advises the user to do",
+  "actions": [
+    {
+      "id": "short_snake_id",
+      "label": "Button label in ${lang} (3-5 words)",
+      "type": "calendar_event | gmail_draft | drive_save | memory_log | platform_report",
+      "rationale": "one short ${lang} sentence on why this action helps",
+      "payload": {
+        "title": "for calendar_event / drive_save",
+        "when_hint": "for calendar_event: a date or relative date in ISO if possible (e.g. 2025-06-12T18:00), or natural-language fallback",
+        "durationMinutes": 60,
+        "location": "for calendar_event",
+        "description": "calendar description / drive markdown body",
+        "checklist": ["bullets to include in the description"],
+        "to": "for gmail_draft: recipient if known, else empty",
+        "subject": "for gmail_draft",
+        "body": "for gmail_draft: full email body in fluent ${profile.fluency === 'low' ? lang + ' AND English (bilingual block)' : lang}, never shares SIN/banking info",
+        "note": "for memory_log / platform_report: short note in ${lang}"
+      }
+    }
+  ],
+  "tips": ["1-3 short, actionable tips in ${lang}"],
+  "disclaimer": "one short sentence in ${lang} reminding this is AI guidance, not financial/legal advice"
 }
 
-The scamRisk.score is an integer 0-100 where higher = riskier. Keep arrays short. If there are no prices, return an empty prices array and set priceContext.verdict to "unknown".`;
+Action selection rules:
+- Rental, looks fair → propose "Book a viewing" (calendar_event) AND "Draft inquiry" (gmail_draft) AND "Save to decisions folder" (drive_save).
+- Rental, scammy → propose "Report & walk away" (platform_report) AND "Log this scammer" (memory_log).
+- Marketplace, fair → propose "Draft a safe offer" (gmail_draft) AND "Save listing" (drive_save).
+- Marketplace, scammy → propose "Walk away" (memory_log) AND optionally "Report listing" (platform_report).
+- Bank/credit offer → propose "Set review reminder" (calendar_event before any promo expires) AND "Save summary" (drive_save).
+- Bill / invoice → propose "Add due-date reminder" (calendar_event 3 days before due).
+- Job → propose "Save posting" (drive_save) AND "Draft application email" (gmail_draft).
+- Always limit to 2-4 actions, ordered most valuable first.
+
+NEVER include the user's banking info, SIN, passwords, or sensitive personal data in any draft.
+NEVER auto-send anything. Drafts are previewed; the user confirms.`;
 }
 
-// ---- Gemini API helpers --------------------------------------------------
+// ---- Gemini API ----------------------------------------------------------
 
 function extractGeminiText(data) {
   const cand = (data.candidates || [])[0];
   if (!cand) return "";
   const parts = cand.content?.parts || [];
-  return parts.map((p) => p.text || "").join("\n").trim();
+  return parts.filter((p) => !p.thought).map((p) => p.text || "").join("\n").trim();
 }
 
 async function callGemini({ apiKey, system, messages, maxTokens, jsonMode }) {
-  // Gemini uses "user" and "model" roles; map "assistant" -> "model".
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : m.role,
     parts: [{ text: m.content }]
   }));
-
   const body = {
     system_instruction: { parts: [{ text: system }] },
     contents,
@@ -127,38 +192,151 @@ async function callGemini({ apiKey, system, messages, maxTokens, jsonMode }) {
       ...(jsonMode ? { responseMimeType: "application/json" } : {})
     }
   };
-
   const resp = await fetch(`${GEMINI_API_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
-
   if (!resp.ok) {
     const errText = await resp.text();
     return { error: "API_ERROR", message: `API request failed (${resp.status}). ${errText.slice(0, 200)}` };
   }
-
   const data = await resp.json();
   return { ok: true, text: extractGeminiText(data) };
 }
 
-// ---- API call ------------------------------------------------------------
+// ---- Main analyze flow ---------------------------------------------------
 
 async function analyzePage(pageData) {
   const profile = await getProfile();
   const apiKey = await getApiKey();
-
-  if (!apiKey) {
-    return {
-      error: "NO_API_KEY",
-      message: "No Gemini API key set. Open the Lyza popup → Settings to add one."
-    };
+  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
+    return { error: "NO_API_KEY", message: "No Gemini API key set. Open the Lyza popup → Settings to add one." };
   }
 
-  const system = buildSystemPrompt(profile);
+  // Layer 1+2 fire in parallel with the LLM call so total latency ≈ slowest of the three.
+  const sbKey = await getSafeBrowsingKey();
+  const memory = await loadMemory();
+  const tentativeCurrent = {
+    host: hostnameOf(pageData.url),
+    url: pageData.url
+  };
+  const memoryHits = findMemoryHits(memory, tentativeCurrent);
 
-  const userContent = `Here is the webpage I'm looking at.
+  const urlHeuristicsP = Promise.resolve(runUrlHeuristics(pageData.url));
+  const safeBrowsingP = checkSafeBrowsing(pageData.url, sbKey);
+  const domainAgeP = checkDomainAge(pageData.url);
+
+  const system = buildSystemPrompt(profile);
+  const userContent = buildUserPrompt(pageData, memoryHits);
+
+  const llmP = callGemini({
+    apiKey, system,
+    messages: [{ role: "user", content: userContent }],
+    maxTokens: 2200,
+    jsonMode: true
+  });
+
+  const [urlH, safeB, age, llmRes] = await Promise.all([urlHeuristicsP, safeBrowsingP, domainAgeP, llmP]);
+
+  if (llmRes.error) return llmRes;
+
+  let llm;
+  try {
+    const cleaned = llmRes.text.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+    llm = JSON.parse(cleaned);
+  } catch (e) {
+    return { error: "PARSE_ERROR", message: "Could not parse AI response.", raw: llmRes.text };
+  }
+
+  // Fuse risk: deterministic + live signals + LLM content score
+  const contentScore = Number(llm.contentScamSignals?.score) || 0;
+  const fused = fuseRisk(urlH, safeB, age, contentScore);
+
+  // Merge reasons (deterministic first, then content-based)
+  const reasons = [
+    ...(urlH.signals || []),
+    ...(safeB.label ? [safeB.label] : []),
+    ...(age.label ? [age.label] : []),
+    ...((llm.contentScamSignals?.reasons || []).slice(0, 6))
+  ];
+
+  // Real FX conversion on each structured price
+  const prices = await Promise.all((llm.prices || []).map(async (p) => {
+    const out = { ...p };
+    const fx = await getFxRate(p.currency, profile.homeCurrency);
+    if (fx && typeof p.amount === "number") {
+      out.convertedAmount = Math.round(p.amount * fx.rate * 100) / 100;
+      out.convertedCurrency = profile.homeCurrency;
+      out.rate = fx.rate;
+      out.rateTs = fx.ts;
+      out.original = formatPrice(p);
+      out.converted = `≈ ${formatMoney(out.convertedAmount, profile.homeCurrency)}` + (p.period ? `/${shortPeriod(p.period)}` : "");
+    } else {
+      out.original = formatPrice(p);
+      out.converted = "";
+    }
+    return out;
+  }));
+
+  const analysis = {
+    pageType: llm.pageType || "other",
+    kind: llm.kind || llm.pageType || "other",
+    summary: llm.summary || "",
+    confidence: llm.confidence || "medium",
+    prices,
+    priceContext: llm.priceContext || { verdict: "unknown", explanation: "" },
+    scamRisk: {
+      level: fused.level,
+      score: fused.score,
+      reasons: dedupe(reasons).slice(0, 8),
+      breakdown: {
+        urlHeuristics: urlH.score,
+        blocklist: safeB.available ? (safeB.listed ? "listed" : "clean") : "unavailable",
+        domainAgeDays: age.ageDays,
+        contentScore
+      }
+    },
+    flaggedPhrases: llm.flaggedPhrases || [],
+    sellerHandle: llm.sellerHandle || "",
+    memoryHits,
+    memoryInsights: llm.memoryInsights || [],
+    recommendation: llm.recommendation || "",
+    actions: (llm.actions || []).slice(0, 4),
+    tips: llm.tips || [],
+    disclaimer: llm.disclaimer || ""
+  };
+
+  // Write to memory
+  const firstPrice = prices[0];
+  await saveMemoryRecord({
+    kind: analysis.kind,
+    host: tentativeCurrent.host,
+    title: pageData.title,
+    url: pageData.url,
+    priceAmount: firstPrice?.amount ?? null,
+    priceCurrency: firstPrice?.currency ?? null,
+    pricePeriod: firstPrice?.period ?? null,
+    sellerHandle: analysis.sellerHandle || null,
+    verdict: analysis.priceContext?.verdict ?? null,
+    scamLevel: analysis.scamRisk.level,
+    scamScore: analysis.scamRisk.score,
+    summary: analysis.summary,
+    recommendation: analysis.recommendation
+  });
+
+  return { ok: true, analysis };
+}
+
+function buildUserPrompt(pageData, memoryHits) {
+  const memBlock = memoryHits.length
+    ? `\n\nRelevant memory hits (the user has seen these before — REASON ACROSS THEM in memoryInsights):\n` +
+      memoryHits.map((h, i) =>
+        `${i + 1}. [${h._matchReason}] ${h.kind} on ${h.host} — ${h.title} — ${h.priceAmount ?? "?"} ${h.priceCurrency ?? ""}${h.pricePeriod ? "/" + h.pricePeriod : ""} · scam:${h.scamLevel} · verdict:${h.verdict ?? "?"}${h.sellerHandle ? " · seller:" + h.sellerHandle : ""}`
+      ).join("\n")
+    : "\n\nNo prior memory for this user.";
+
+  return `Here is the webpage I'm looking at.
 
 URL: ${pageData.url}
 Page title: ${pageData.title}
@@ -166,53 +344,41 @@ Page title: ${pageData.title}
 Extracted content:
 """
 ${pageData.text.slice(0, 12000)}
-"""
+"""${memBlock}
 
-Analyze it for me as Lyza and return the JSON.`;
-
-  try {
-    const result = await callGemini({
-      apiKey,
-      system,
-      messages: [{ role: "user", content: userContent }],
-      maxTokens: 1500,
-      jsonMode: true
-    });
-
-    if (result.error) return result;
-
-    const raw = result.text;
-    const cleaned = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-
-    try {
-      return { ok: true, analysis: JSON.parse(cleaned) };
-    } catch (e) {
-      return { error: "PARSE_ERROR", message: "Could not parse AI response.", raw: cleaned };
-    }
-  } catch (e) {
-    return { error: "NETWORK_ERROR", message: String(e) };
-  }
+Analyze it as Lyza and return the JSON.`;
 }
 
-// ---- Chat follow-up (optional "if we have time" feature) -----------------
+function hostnameOf(rawUrl) {
+  try { return new URL(rawUrl).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
+function dedupe(arr) {
+  return [...new Set(arr.filter(Boolean))];
+}
+function shortPeriod(p) {
+  return ({ month: "mo", year: "yr", hour: "hr", one_time: "" })[p] || p;
+}
+function formatPrice(p) {
+  if (typeof p.amount !== "number") return "";
+  const base = formatMoney(p.amount, p.currency);
+  if (p.period && p.period !== "one_time") return `${base}/${shortPeriod(p.period)}`;
+  return base;
+}
+
+// ---- Chat follow-up ------------------------------------------------------
 
 async function chatFollowUp({ pageData, history, question }) {
   const profile = await getProfile();
   const apiKey = await getApiKey();
-  if (!apiKey) return { error: "NO_API_KEY", message: "No API key set." };
+  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") return { error: "NO_API_KEY", message: "No API key set." };
 
   const system = buildSystemPrompt(profile) +
-    `\n\nThe user may now ask follow-up questions about this page. Answer conversationally in ${languageLabel(
-      profile.language
-    )}, staying focused on helping a newcomer make a safe, informed financial decision. Keep answers concise. You may answer in plain text now (not JSON) for chat.`;
+    `\n\nFOLLOW-UP MODE: The user is now asking conversational follow-up questions about this page. Reply in ${languageLabel(profile.language)} in plain text (NOT JSON). Stay focused on helping a newcomer make a safe, informed financial decision. Keep replies concise.`;
 
   const messages = [
     {
       role: "user",
-      content: `Context — the page I'm viewing:\nURL: ${pageData.url}\nTitle: ${pageData.title}\nContent:\n"""${pageData.text.slice(
-        0,
-        8000
-      )}"""`
+      content: `Context — the page I'm viewing:\nURL: ${pageData.url}\nTitle: ${pageData.title}\nContent:\n"""${pageData.text.slice(0, 8000)}"""`
     },
     { role: "assistant", content: "Got it — I've reviewed the page. What would you like to know?" },
     ...history,
@@ -228,15 +394,368 @@ async function chatFollowUp({ pageData, history, question }) {
   }
 }
 
+// ---- Action executor (template-URL connectors) ---------------------------
+
+function toIsoNoMs(date) {
+  return new Date(date).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+function calendarDateRange(when_hint, durationMinutes) {
+  // Parse ISO if possible; else default to tomorrow 18:00 local
+  let start = null;
+  if (typeof when_hint === "string") {
+    const parsed = Date.parse(when_hint);
+    if (!isNaN(parsed)) start = new Date(parsed);
+  }
+  if (!start) {
+    start = new Date();
+    start.setDate(start.getDate() + 1);
+    start.setHours(18, 0, 0, 0);
+  }
+  const end = new Date(start.getTime() + (durationMinutes || 60) * 60000);
+  const fmt = (d) => toIsoNoMs(d).replace(/[-:]/g, "");
+  return `${fmt(start)}/${fmt(end)}`;
+}
+
+function buildExecution(action) {
+  const p = action.payload || {};
+  switch (action.type) {
+    case "calendar_event": {
+      const dates = calendarDateRange(p.when_hint, p.durationMinutes);
+      const description = [
+        p.description || "",
+        Array.isArray(p.checklist) && p.checklist.length
+          ? "\n\nChecklist:\n- " + p.checklist.join("\n- ")
+          : ""
+      ].filter(Boolean).join("");
+      const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: p.title || action.label || "Lyza event",
+        dates,
+        details: description,
+        location: p.location || ""
+      });
+      return {
+        kind: "open_url",
+        url: `https://calendar.google.com/calendar/render?${params.toString()}`,
+        preview: {
+          title: p.title,
+          when: dates,
+          location: p.location,
+          description,
+          checklist: p.checklist
+        }
+      };
+    }
+    case "gmail_draft": {
+      const params = new URLSearchParams({
+        view: "cm",
+        fs: "1",
+        to: p.to || "",
+        su: p.subject || "",
+        body: p.body || ""
+      });
+      return {
+        kind: "open_url",
+        url: `https://mail.google.com/mail/?${params.toString()}`,
+        preview: { to: p.to, subject: p.subject, body: p.body }
+      };
+    }
+    case "drive_save": {
+      const title = p.title || action.label || "Lyza note";
+      const md = [
+        `# ${title}`,
+        "",
+        p.description || "",
+        Array.isArray(p.checklist) && p.checklist.length
+          ? "\n## Checklist\n- " + p.checklist.join("\n- ")
+          : ""
+      ].join("\n");
+      return {
+        kind: "download_markdown",
+        content: md,
+        filename: `${title.replace(/[^\w\- ]/g, "").slice(0, 60) || "lyza-note"}.md`,
+        preview: { title, body: md }
+      };
+    }
+    case "memory_log": {
+      return { kind: "memory_log", note: p.note || action.label, preview: { note: p.note } };
+    }
+    case "platform_report": {
+      const body = p.body || `Hello, I'd like to report a potentially fraudulent listing: ${p.note || ""}`;
+      const params = new URLSearchParams({
+        view: "cm", fs: "1",
+        to: p.to || "",
+        su: p.subject || "Reporting a suspicious listing",
+        body
+      });
+      return {
+        kind: "open_url",
+        url: `https://mail.google.com/mail/?${params.toString()}`,
+        preview: { to: p.to, subject: p.subject || "Reporting a suspicious listing", body }
+      };
+    }
+    default:
+      return { kind: "noop", preview: action.payload || {} };
+  }
+}
+
+async function executeAction({ action, pageData }) {
+  const plan = buildExecution(action);
+
+  if (plan.kind === "open_url") {
+    await chrome.tabs.create({ url: plan.url });
+    return { ok: true, kind: plan.kind };
+  }
+  if (plan.kind === "download_markdown") {
+    // Content script handles the actual download via Blob URL (works in MV3 page contexts).
+    return { ok: true, kind: "download_markdown", filename: plan.filename, content: plan.content };
+  }
+  if (plan.kind === "memory_log") {
+    await saveMemoryRecord({
+      kind: "note",
+      host: hostnameOf(pageData?.url || ""),
+      title: action.label || "Note",
+      url: pageData?.url,
+      notes: plan.note,
+      scamLevel: "high",
+      scamScore: 90
+    });
+    return { ok: true, kind: "memory_log" };
+  }
+  return { ok: true, kind: "noop" };
+}
+
+function previewAction(action) {
+  return buildExecution(action);
+}
+
+// ---- Memory queries (for popup dashboard) --------------------------------
+
+async function getMemorySummary() {
+  const memory = await loadMemory();
+  return { ok: true, summary: summarizeMemory(memory), recent: memory.slice(0, 10) };
+}
+
+// ---- ElevenLabs TTS ------------------------------------------------------
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function synthesizeSpeech({ text, voiceId, language }) {
+  const key = await getElevenLabsKey();
+  if (!key || key === "YOUR_ELEVENLABS_KEY") {
+    return { error: "NO_TTS_KEY", message: "No ElevenLabs key. Falling back to browser voice." };
+  }
+  const trimmed = String(text || "").slice(0, 900);
+  if (!trimmed.trim()) return { error: "EMPTY_TEXT" };
+
+  try {
+    const resp = await fetch(`${ELEVENLABS_URL}/${voiceId || ELEVENLABS_VOICE_ID}`, {
+      method: "POST",
+      headers: {
+        "xi-api-key": key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
+      },
+      body: JSON.stringify({
+        text: trimmed,
+        model_id: ELEVENLABS_MODEL,
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0, use_speaker_boost: true }
+      })
+    });
+    if (!resp.ok) {
+      const errTxt = (await resp.text()).slice(0, 200);
+      return { error: "TTS_API_ERROR", status: resp.status, message: errTxt };
+    }
+    const buf = await resp.arrayBuffer();
+    const b64 = arrayBufferToBase64(buf);
+    return { ok: true, audio: `data:audio/mpeg;base64,${b64}`, lang: language || null };
+  } catch (e) {
+    return { error: "TTS_NETWORK_ERROR", message: String(e) };
+  }
+}
+
 // ---- Message router ------------------------------------------------------
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "ANALYZE_PAGE") {
-    analyzePage(msg.pageData).then(sendResponse);
-    return true; // async
+    analyzePage(msg.pageData).then(sendResponse).catch((e) =>
+      sendResponse({ error: "UNCAUGHT", message: String(e) })
+    );
+    return true;
   }
   if (msg.type === "CHAT_FOLLOWUP") {
     chatFollowUp(msg.payload).then(sendResponse);
     return true;
   }
+  if (msg.type === "PREVIEW_ACTION") {
+    sendResponse({ ok: true, plan: previewAction(msg.action) });
+    return false;
+  }
+  if (msg.type === "EXECUTE_ACTION") {
+    executeAction(msg.payload).then(sendResponse);
+    return true;
+  }
+  if (msg.type === "GET_MEMORY") {
+    getMemorySummary().then(sendResponse);
+    return true;
+  }
+  if (msg.type === "CLEAR_MEMORY") {
+    clearMemory().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === "SPEAK") {
+    synthesizeSpeech(msg.payload || {}).then(sendResponse).catch((e) =>
+      sendResponse({ error: "UNCAUGHT", message: String(e) })
+    );
+    return true;
+  }
+  if (msg.type === "GET_PROFILE_LANGUAGE") {
+    getProfile().then((p) => sendResponse({ ok: true, language: p.language || "en" }));
+    return true;
+  }
+  if (msg.type === "SET_PROFILE_LANGUAGE" && typeof msg.language === "string") {
+    (async () => {
+      const profile = await getProfile();
+      profile.language = msg.language;
+      await chrome.storage.local.set({ [STORAGE_KEYS.PROFILE]: profile });
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
+
+  // ---- v4 mission control ------------------------------------------------
+  if (msg.type === "CREATE_MISSION") {
+    (async () => {
+      try {
+        const m = await missions.createMission(msg.payload || {});
+        await missions.setActive(m.id);
+        // Fire-and-forget: kick the loop. If planner errors, mission stays in 'draft'.
+        loop.start(m.id).catch((e) => console.warn("[Lyza] mission start failed", e));
+        sendResponse({ ok: true, missionId: m.id, mission: m });
+      } catch (e) {
+        sendResponse({ error: "CREATE_FAILED", message: String(e) });
+      }
+    })();
+    return true;
+  }
+  if (msg.type === "LIST_MISSIONS") {
+    missions.listMissions(msg.payload || {})
+      .then((list) => sendResponse({ ok: true, missions: list }))
+      .catch((e) => sendResponse({ error: "LIST_FAILED", message: String(e) }));
+    return true;
+  }
+  if (msg.type === "GET_MISSION") {
+    missions.getMission(msg.missionId)
+      .then((m) => sendResponse({ ok: !!m, mission: m, log: m?.log || [] }))
+      .catch((e) => sendResponse({ error: "GET_FAILED", message: String(e) }));
+    return true;
+  }
+  if (msg.type === "PAUSE_MISSION") {
+    (async () => {
+      try { await loop.stop(msg.missionId, "user_pause"); sendResponse({ ok: true }); }
+      catch (e) { sendResponse({ error: "PAUSE_FAILED", message: String(e) }); }
+    })();
+    return true;
+  }
+  if (msg.type === "RESUME_MISSION") {
+    (async () => {
+      try { await loop.resume(msg.missionId); sendResponse({ ok: true }); }
+      catch (e) { sendResponse({ error: "RESUME_FAILED", message: String(e) }); }
+    })();
+    return true;
+  }
+  if (msg.type === "CANCEL_MISSION") {
+    (async () => {
+      try {
+        await loop.stop(msg.missionId, "user_cancel").catch(() => {});
+        await missions.setStatus(msg.missionId, "failed", { code: "USER_CANCELLED", message: "Cancelled by user" });
+        sendResponse({ ok: true });
+      } catch (e) { sendResponse({ error: "CANCEL_FAILED", message: String(e) }); }
+    })();
+    return true;
+  }
+  if (msg.type === "APPROVE_ESCALATION") {
+    (async () => {
+      try {
+        await loop.handleEscalationDecision(msg.missionId, msg.escalationId, {
+          decision: "approved",
+          editedArgs: msg.edits || null
+        });
+        sendResponse({ ok: true });
+      } catch (e) { sendResponse({ error: "APPROVE_FAILED", message: String(e) }); }
+    })();
+    return true;
+  }
+  if (msg.type === "DECLINE_ESCALATION") {
+    (async () => {
+      try {
+        await loop.handleEscalationDecision(msg.missionId, msg.escalationId, {
+          decision: "declined",
+          note: msg.reason || null
+        });
+        sendResponse({ ok: true });
+      } catch (e) { sendResponse({ error: "DECLINE_FAILED", message: String(e) }); }
+    })();
+    return true;
+  }
+
+  // Content-script ping → wake loop on active mission for this tab.
+  if (msg.type === "LYZA_CS_READY") {
+    loop.resumeAll().catch((e) => console.warn("[Lyza] resumeAll on CS ready failed", e));
+    sendResponse({ ok: true });
+    return false;
+  }
+
+  // Tool-call results routed back from content scripts to pending invokes.
+  if (msg.type === "LYZA_TOOL_RESULT") {
+    if (typeof tools.resolvePending === "function") {
+      tools.resolvePending(sender.tab?.id, msg.callId, msg.result);
+    }
+    sendResponse({ ok: true });
+    return false;
+  }
 });
+
+// ---- v4 lifecycle: alarms heartbeat + onStartup resume -------------------
+
+const MISSION_ALARM = "lyza_mission_tick";
+
+function ensureMissionAlarm() {
+  try {
+    chrome.alarms.get(MISSION_ALARM, (existing) => {
+      if (!existing) {
+        chrome.alarms.create(MISSION_ALARM, { periodInMinutes: 1 });
+      }
+    });
+  } catch (e) {
+    console.warn("[Lyza] could not register alarm:", e);
+  }
+}
+
+chrome.runtime.onStartup.addListener(() => {
+  ensureMissionAlarm();
+  loop.resumeAll().catch((e) => console.warn("[Lyza] resumeAll on startup failed", e));
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureMissionAlarm();
+});
+
+if (chrome.alarms && chrome.alarms.onAlarm) {
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === MISSION_ALARM) {
+      loop.resumeAll().catch((e) => console.warn("[Lyza] resumeAll on alarm failed", e));
+    }
+  });
+}
+
+// Initial registration in case onInstalled doesn't fire (e.g. SW restart mid-session).
+ensureMissionAlarm();
