@@ -91,6 +91,7 @@
               <option value="en">English</option>
               <option value="es">Español</option>
               <option value="hi">हिन्दी (Hindi)</option>
+              <option value="ru">Русский</option>
               <option value="fr">Français</option>
               <option value="pt">Português</option>
               <option value="zh">中文</option>
@@ -617,41 +618,71 @@
   let activeAudio = null;
   let profileLanguage = "en";
 
+  // Audio is serialized: each speak() awaits a promise that resolves when the
+  // narration actually finishes playing. The walkthrough run() awaits it so
+  // the next step doesn't fire mid-sentence.
   function stopAudio() {
     try { if (activeAudio) { activeAudio.pause(); activeAudio.src = ""; activeAudio = null; } } catch {}
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch {}
   }
+  // Expose so LyzaHands.halt() can cancel TTS instantly when user taps STOP.
+  window.LyzaStopAudio = stopAudio;
 
   function speakBrowserFallback(text) {
-    try {
-      if (!window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.rate = 1.0;
-      utt.pitch = 1.0;
-      window.speechSynthesis.speak(utt);
-    } catch (e) { /* no-op */ }
+    return new Promise((resolve) => {
+      try {
+        if (!window.speechSynthesis) return resolve();
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.rate = 1.0;
+        utt.pitch = 1.0;
+        utt.lang = ({ en:"en-US", es:"es-ES", hi:"hi-IN", ru:"ru-RU", fr:"fr-FR",
+                       pt:"pt-BR", zh:"zh-CN", ar:"ar-SA" })[profileLanguage] || "en-US";
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        utt.onend = finish;
+        utt.onerror = finish;
+        // Belt-and-suspenders: hard timeout based on text length.
+        setTimeout(finish, Math.min(20000, 1200 + text.length * 70));
+        window.speechSynthesis.speak(utt);
+      } catch { resolve(); }
+    });
   }
 
   function speak(text) {
-    if (!text) return;
-    stopAudio();
-    lyzaSend(
-      { type: "SPEAK", payload: { text, language: profileLanguage } },
-      (res) => {
-        if (res && res.ok && res.audio) {
-          try {
-            activeAudio = new Audio(res.audio);
-            activeAudio.play().catch(() => speakBrowserFallback(text));
-          } catch {
-            speakBrowserFallback(text);
+    return new Promise((resolve) => {
+      if (!text) return resolve();
+      // Don't cancel previous audio here — the walkthrough awaits us serially.
+      lyzaSend(
+        { type: "SPEAK", payload: { text, language: profileLanguage } },
+        (res) => {
+          if (res && res.ok && res.audio) {
+            try {
+              activeAudio = new Audio(res.audio);
+              let done = false;
+              const finish = () => {
+                if (done) return;
+                done = true;
+                activeAudio = null;
+                resolve();
+              };
+              activeAudio.addEventListener("ended", finish);
+              activeAudio.addEventListener("error", finish);
+              // Safety timeout — 22s max per narration.
+              setTimeout(finish, 22000);
+              activeAudio.play().catch(() => {
+                done = true; activeAudio = null;
+                speakBrowserFallback(text).then(resolve);
+              });
+            } catch {
+              speakBrowserFallback(text).then(resolve);
+            }
+          } else {
+            speakBrowserFallback(text).then(resolve);
           }
-        } else {
-          // No ElevenLabs key or API error → browser fallback so the demo never goes silent.
-          speakBrowserFallback(text);
         }
-      }
-    );
+      );
+    });
   }
 
   async function loadProfileLanguage() {

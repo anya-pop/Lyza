@@ -181,6 +181,30 @@
         done:    "اكتمل الجولة",
         stopped: "تم الإيقاف"
       }
+    },
+    ru: {
+      priceIntro:  "Давайте посмотрим это объявление вместе. Это месячная аренда.",
+      priceConv:   "В вашей домашней валюте это примерно сто сорок восемь тысяч рупий в месяц.",
+      clauseWarn:  "Обратите внимание на этот пункт. Он требует невозвратный депозит ещё до того, как вы сможете увидеть квартиру. Это серьёзный тревожный сигнал.",
+      msgWarn:     "В сообщении арендодателя сказано, что он за границей и хочет деньги до показа жилья. Мошенники постоянно используют эту историю.",
+      goodPoint:   "Справедливости ради, некоторые условия хорошие — коммунальные услуги включены, что экономит ваши деньги.",
+      finalReco:   "Моя рекомендация: это объявление высокого риска. Никогда не отправляйте депозит, не увидев место лично.",
+      tip: {
+        clause:    "Требование невозвратного депозита до любого просмотра — классический шаблон мошенничества с арендой.",
+        msg:       "«Я за границей, отправь деньги первым, агент пришлёт ключи» — один из самых распространённых сценариев мошенничества.",
+        good:      "Включённые коммунальные услуги экономят деньги каждый месяц — действительно хорошее условие.",
+        recoNote:  "Высокий риск. Не отправляйте депозит без личного просмотра."
+      },
+      status: {
+        price:   "Читаю цену",
+        convert: "Конвертирую цену",
+        clause:  "Найден рискованный пункт",
+        msg:     "Проверяю сообщение",
+        good:    "Замечаю положительное",
+        reco:    "Финальная рекомендация",
+        done:    "Обзор завершён",
+        stopped: "Остановлено"
+      }
     }
   };
 
@@ -195,10 +219,24 @@
         if (h.halted) break;
         const step = plan[i];
         h.setStatus(step.status || `Step ${i + 1} of ${plan.length}`);
-        if (step.say) onNarrate(step.say);
+
+        // Fire narration + visual in parallel. Await BOTH so we don't cut off
+        // the previous sentence when moving to the next step.
+        const narrationP = step.say
+          ? Promise.resolve(onNarrate(step.say)).catch(() => {})
+          : Promise.resolve();
         const fn = h[step.tool];
-        if (typeof fn === "function") await fn(step.args || {});
-        await sleep(step.pause != null ? step.pause : 900);
+        const visualP = (typeof fn === "function")
+          ? Promise.resolve(fn(step.args || {})).catch(() => {})
+          : Promise.resolve();
+
+        await Promise.all([narrationP, visualP]);
+
+        // Tiny breath between steps. Cap at 600ms so demo stays brisk even
+        // if the planner asked for a longer pause (TTS already covers most of it).
+        if (h.halted) break;
+        const breath = Math.min(step.pause != null ? step.pause : 600, 600);
+        await sleep(breath);
       }
       if (!h.halted) {
         h.setStatus("Walkthrough complete");

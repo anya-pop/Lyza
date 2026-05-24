@@ -187,6 +187,9 @@
     halted = true;
     setStatus("Stopped");
     if (cursorEl) cursorEl.classList.remove("lyza-visible");
+    // Cancel any in-flight TTS so STOP is instant.
+    try { if (window.LyzaStopAudio) window.LyzaStopAudio(); } catch {}
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch {}
   }
   function clear() {
     injected.forEach((n) => n.remove());

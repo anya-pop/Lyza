@@ -3,7 +3,7 @@
 // Escalation Explainer all use the same shape so the loop can swap them out
 // in tests without touching prompts.
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.5-flash";
 
 export const GEMINI = {
   endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
@@ -12,7 +12,7 @@ export const GEMINI = {
     temperature: 0.3,
     topP: 0.9,
     topK: 40,
-    maxOutputTokens: 1600,
+    maxOutputTokens: 3200,
     candidateCount: 1
   },
   reflector: {
@@ -20,7 +20,7 @@ export const GEMINI = {
     temperature: 0.2,
     topP: 0.9,
     topK: 32,
-    maxOutputTokens: 500,
+    maxOutputTokens: 1200,
     candidateCount: 1
   },
   escalation: {
@@ -28,7 +28,7 @@ export const GEMINI = {
     temperature: 0.5,
     topP: 0.95,
     topK: 40,
-    maxOutputTokens: 700,
+    maxOutputTokens: 1500,
     candidateCount: 1
   }
 };

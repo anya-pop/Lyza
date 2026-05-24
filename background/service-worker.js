@@ -22,7 +22,7 @@ import * as missions from "../agent/missions.js";
 import * as loop from "../agent/loop.js";
 import * as tools from "../agent/tools.js";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const DEFAULT_API_KEY = "YOUR_GEMINI_API_KEY";
 
@@ -260,7 +260,7 @@ async function analyzePage(pageData) {
   const llmP = callGemini({
     apiKey, system,
     messages: [{ role: "user", content: userContent }],
-    maxTokens: 4000,
+    maxTokens: 8000,
     jsonMode: true
   });
 
@@ -280,7 +280,7 @@ async function analyzePage(pageData) {
         { role: "assistant", content: llmRes.text },
         { role: "user", content: "Your previous response was not valid JSON or was truncated. Re-emit ONLY a complete valid JSON object that matches the schema. No markdown, no code fences, no prose." }
       ],
-      maxTokens: 4000,
+      maxTokens: 8000,
       jsonMode: true
     });
     if (!retry.error) llm = parseGeminiJson(retry.text);
@@ -431,7 +431,7 @@ async function chatFollowUp({ pageData, history, question }) {
   ];
 
   try {
-    const result = await callGemini({ apiKey, system, messages, maxTokens: 800, jsonMode: false });
+    const result = await callGemini({ apiKey, system, messages, maxTokens: 2000, jsonMode: false });
     if (result.error) return result;
     return { ok: true, reply: result.text };
   } catch (e) {
