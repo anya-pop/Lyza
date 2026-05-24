@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lyza</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="head">
+      <div class="brand">
+        <span class="logo">L</span>
+        <div>
+          <div class="name">Lyza</div>
+          <div class="tag">Your financial acclimation profile</div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="profile">Profile</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+      <!-- PROFILE TAB -->
+      <section id="tab-profile" class="tabpane active">
+        <p class="intro">Set this once. Lyza uses it to tailor every page analysis to your situation.</p>
+
+        <fieldset>
+          <legend>Identity &amp; settlement</legend>
+          <label>Country
+            <input type="text" id="country" placeholder="e.g. Canada" />
+          </label>
+          <label>Province / State
+            <input type="text" id="province" placeholder="e.g. Ontario" />
+          </label>
+          <label>Newcomer status
+            <select id="status"></select>
+          </label>
+          <label>Time in country
+            <select id="timeInCountry"></select>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Currency</legend>
+          <label>Local currency (where you live)
+            <select id="localCurrency"></select>
+          </label>
+          <label>Home currency (familiar to you)
+            <select id="homeCurrency"></select>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Language</legend>
+          <label>Preferred language for explanations
+            <select id="language"></select>
+          </label>
+          <label>Local-language fluency
+            <select id="fluency"></select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="simplify" />
+            Simplify explanations (plain, simple words)
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Life stage</legend>
+          <label>Housing
+            <select id="housing"></select>
+          </label>
+          <label>Job
+            <select id="job"></select>
+          </label>
+          <label>Immigration stage
+            <select id="immigrationStage"></select>
+          </label>
+        </fieldset>
+
+        <button id="save" class="primary">Save profile</button>
+        <p id="saved-msg" class="saved-msg"></p>
+      </section>
+
+      <!-- SETTINGS TAB -->
+      <section id="tab-settings" class="tabpane">
+        <fieldset>
+          <legend>Gemini API key</legend>
+          <p class="hint">Lyza calls Google Gemini directly from your browser. Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>. Your key is stored locally in this browser only and sent only to Google.</p>
+          <label>API key
+            <input type="password" id="apiKey" placeholder="AIza..." />
+          </label>
+          <button id="saveKey" class="primary">Save key</button>
+          <p id="key-msg" class="saved-msg"></p>
+        </fieldset>
+        <fieldset>
+          <legend>How to use</legend>
+          <ol class="howto">
+            <li>Set your profile and save your API key.</li>
+            <li>Open any marketplace, rental, banking, or job page.</li>
+            <li>Click the floating <b>L</b> button at the bottom-right.</li>
+            <li>Hit <b>Analyze this page</b>.</li>
+          </ol>
+        </fieldset>
+      </section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
