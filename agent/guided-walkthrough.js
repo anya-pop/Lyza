@@ -278,5 +278,135 @@
     return steps;
   }
 
-  window.LyzaWalkthrough = { run, buildDemoPlan, SAY, L };
+  // ---- Real-analysis-driven plan (Gemini powers this) -------------------
+  // Given the JSON analysis the service worker returns (prices[], flaggedPhrases[],
+  // priceContext, scamRisk, recommendation, tips[], summary), produce a walkthrough
+  // plan that anchors each insight to a REAL element on this page.
+  function escapeForRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  function findPriceElement(map, price) {
+    // Try to find the element whose text contains the original price string OR
+    // the structured amount. Falls back to first element with role="price".
+    const amt = price.amount;
+    const cur = price.currency;
+    const original = price.original;
+    if (original) {
+      const re = new RegExp(escapeForRegex(original.split(/\s/)[0]), "i");
+      const m = map.find((e) => re.test(e.text || ""));
+      if (m) return m;
+    }
+    if (typeof amt === "number") {
+      // Match number with thousands separator variants: 1450, 1,450, 1.450
+      const n = String(amt).replace(/\.0+$/, "");
+      const re = new RegExp(`\\b${escapeForRegex(n)}\\b|\\b${escapeForRegex(n.replace(/(\d)(?=(\d{3})+$)/g, "$1,"))}\\b`);
+      const m = map.find((e) => {
+        const t = e.text || "";
+        return re.test(t) && (cur ? new RegExp(escapeForRegex(cur)+"|\\$|€|£|₹", "i").test(t) : true);
+      });
+      if (m) return m;
+    }
+    return map.find((e) => e.role === "price") || null;
+  }
+
+  function findPhraseElement(map, phrase) {
+    if (!phrase || typeof phrase !== "string") return null;
+    const needle = phrase.trim().slice(0, 80);
+    if (needle.length < 4) return null;
+    const re = new RegExp(escapeForRegex(needle), "i");
+    return map.find((e) => re.test(e.text || "")) || null;
+  }
+
+  function findTopAnchor(map) {
+    return map.find((e) => e.role === "heading")
+      || map.find((e) => e.role === "price")
+      || map.find((e) => (e.text || "").length > 30)
+      || map[0];
+  }
+
+  function formatPriceBadge(price) {
+    const conv = price.converted;
+    if (conv) return conv;
+    if (typeof price.convertedAmount === "number" && price.convertedCurrency) {
+      return `≈ ${price.convertedAmount.toLocaleString()} ${price.convertedCurrency}`;
+    }
+    return null;
+  }
+
+  function buildAnalysisPlan(analysis, opts = {}) {
+    if (!analysis) return [];
+    const lang = (opts.language || "en").toLowerCase();
+    const t = L(lang);
+    const map = eyes().buildMap();
+    const steps = [];
+    const usedIds = new Set();
+
+    // 1) Walk every price the LLM found. Anchor to real element by amount.
+    const prices = Array.isArray(analysis.prices) ? analysis.prices : [];
+    prices.forEach((p, i) => {
+      const el = findPriceElement(map, p);
+      if (!el || usedIds.has(el.id)) return;
+      usedIds.add(el.id);
+      const badgeText = formatPriceBadge(p) || (p.original || "");
+      const say = (i === 0) ? (t.priceIntro || analysis.summary || "Here's the price.") : `${p.original || ""} ${p.note ? "— " + p.note : ""}`.trim();
+      steps.push({
+        tool: "scroll_to", args: { id: el.id },
+        say, status: t.status.price, pause: 700
+      });
+      if (badgeText) {
+        steps.push({
+          tool: "inject_badge",
+          args: { id: el.id, text: badgeText, tone: "accent" },
+          say: p.note || t.priceConv,
+          status: t.status.convert, pause: 1000
+        });
+      }
+    });
+
+    // 2) Highlight every flagged phrase Gemini detected, with its scam reason.
+    const flagged = Array.isArray(analysis.flaggedPhrases) ? analysis.flaggedPhrases : [];
+    const reasons = analysis.scamRisk?.reasons || [];
+    flagged.forEach((phrase, i) => {
+      const el = findPhraseElement(map, phrase);
+      if (!el || usedIds.has(el.id)) return;
+      usedIds.add(el.id);
+      const reason = reasons[i] || reasons[0] || phrase;
+      const style = analysis.scamRisk?.level === "high" ? "danger" : "warn";
+      steps.push({
+        tool: "highlight",
+        args: { id: el.id, style, reason: reason.slice(0, 220) },
+        say: reason,
+        status: style === "danger" ? t.status.clause : t.status.msg,
+        pause: 1300
+      });
+    });
+
+    // 3) Tips → highlight a related element if findable, otherwise just narrate.
+    const tips = Array.isArray(analysis.tips) ? analysis.tips.slice(0, 2) : [];
+    tips.forEach((tip) => {
+      steps.push({
+        tool: "scroll_to",
+        args: { id: (findTopAnchor(map) || {}).id || (map[0] && map[0].id) },
+        say: tip,
+        status: t.status.good || "Tip", pause: 1100
+      });
+    });
+
+    // 4) Final recommendation as a top-anchored annotation.
+    const reco = analysis.recommendation || analysis.summary;
+    if (reco) {
+      const anchor = findTopAnchor(map);
+      if (anchor) {
+        steps.push({
+          tool: "annotate",
+          args: { id: anchor.id, note: reco.slice(0, 200) },
+          say: reco,
+          status: t.status.reco, pause: 1200
+        });
+      }
+    }
+
+    return steps;
+  }
+
+  window.LyzaWalkthrough = { run, buildDemoPlan, buildAnalysisPlan, SAY, L };
 })();

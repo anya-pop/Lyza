@@ -670,15 +670,43 @@
     }
     await loadProfileLanguage();
 
+    // Ensure we have an analysis from Gemini before walking. If the user
+    // already clicked Analyze, reuse it. Otherwise run it now.
+    let analysis = lastAnalysis;
+    if (!analysis) {
+      const panel = document.getElementById("lyza-panel");
+      if (panel) panel.classList.add("lyza-open");
+      loadingState();
+      lastPageData = scrapePage();
+      analysis = await new Promise((resolve) => {
+        lyzaSend({ type: "ANALYZE_PAGE", pageData: lastPageData }, (res) => {
+          if (res && res.ok) {
+            lastAnalysis = res.analysis;
+            renderAnalysis(res.analysis);
+            resolve(res.analysis);
+          } else {
+            renderError(res || { message: "No response from background." });
+            resolve(null);
+          }
+        });
+      });
+      if (!analysis) return;
+      // Tiny pause so the user can see the cards rendered before we close the panel.
+      await new Promise((r) => setTimeout(r, 700));
+    }
+
+    // Close the panel so the page is visible for the walkthrough.
     const panel = document.getElementById("lyza-panel");
     if (panel) panel.classList.remove("lyza-open");
 
     setTimeout(async () => {
-      const plan = window.LyzaWalkthrough.buildDemoPlan({ language: profileLanguage });
+      // Build the plan from the REAL Gemini analysis, anchored to elements
+      // actually present on this page (via LyzaEyes.buildMap).
+      const plan = window.LyzaWalkthrough.buildAnalysisPlan(analysis, { language: profileLanguage });
       if (!plan || plan.length === 0) {
         window.LyzaHands.begin();
         const t = (window.LyzaWalkthrough.L && window.LyzaWalkthrough.L(profileLanguage)) || {};
-        window.LyzaHands.setStatus(t.status?.done || "Nothing to walk through on this page");
+        window.LyzaHands.setStatus(t.status?.done || "Nothing visible to walk through");
         setTimeout(() => window.LyzaHands.clear(), 2200);
         return;
       }

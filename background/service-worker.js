@@ -24,16 +24,16 @@ import * as tools from "../agent/tools.js";
 
 const MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const DEFAULT_API_KEY = "AIzaSyCcgjZJSlKpVY-YmcbMltjtLKXY73MzCV8";
+const DEFAULT_API_KEY = "YOUR_GEMINI_API_KEY";
 
 // Google Safe Browsing v4 — fraud-engine Layer 2 blocklist signal.
-const DEFAULT_SAFEBROWSING_KEY = "AIzaSyA_ruDMFXqJ_wvgS_hddu2XRdGv8BJ1M5E";
+const DEFAULT_SAFEBROWSING_KEY = "YOUR_SAFEBROWSING_API_KEY";
 
 // ElevenLabs TTS — native-language narration for the guided walkthrough.
 const ELEVENLABS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
 const ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // Rachel — multilingual
 const ELEVENLABS_MODEL = "eleven_multilingual_v2";
-const DEFAULT_ELEVENLABS_KEY = "sk_8ebbf95951eec0b3030b52b8b8e4321e17fa262fd007d009";
+const DEFAULT_ELEVENLABS_KEY = "YOUR_ELEVENLABS_API_KEY";
 
 // ---- Profile / key helpers ----------------------------------------------
 
@@ -172,11 +172,38 @@ NEVER auto-send anything. Drafts are previewed; the user confirms.`;
 
 // ---- Gemini API ----------------------------------------------------------
 
+// Defensive JSON parsing: handles code fences, prose around the object,
+// trailing commas, and partial truncation by finding the largest balanced
+// {...} block.
+function parseGeminiJson(raw) {
+  if (!raw) return null;
+  let cleaned = String(raw)
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  // Strip leading prose (e.g. "Here is the JSON:") before the first {.
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  cleaned = cleaned.slice(first, last + 1);
+  // Try direct parse.
+  try { return JSON.parse(cleaned); } catch {}
+  // Try removing trailing commas before } or ].
+  try { return JSON.parse(cleaned.replace(/,(\s*[}\]])/g, "$1")); } catch {}
+  // Last resort: walk back from the end stripping characters until parse succeeds.
+  for (let cut = cleaned.length - 1; cut > first + 1; cut--) {
+    if (cleaned[cut] !== "}" && cleaned[cut] !== "]") continue;
+    try { return JSON.parse(cleaned.slice(0, cut + 1)); } catch {}
+  }
+  return null;
+}
+
 function extractGeminiText(data) {
   const cand = (data.candidates || [])[0];
   if (!cand) return "";
   const parts = cand.content?.parts || [];
-  return parts.filter((p) => !p.thought).map((p) => p.text || "").join("\n").trim();
+  return parts.map((p) => p.text || "").join("\n").trim();
 }
 
 async function callGemini({ apiKey, system, messages, maxTokens, jsonMode }) {
@@ -233,7 +260,7 @@ async function analyzePage(pageData) {
   const llmP = callGemini({
     apiKey, system,
     messages: [{ role: "user", content: userContent }],
-    maxTokens: 2200,
+    maxTokens: 4000,
     jsonMode: true
   });
 
@@ -241,12 +268,30 @@ async function analyzePage(pageData) {
 
   if (llmRes.error) return llmRes;
 
-  let llm;
-  try {
-    const cleaned = llmRes.text.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-    llm = JSON.parse(cleaned);
-  } catch (e) {
-    return { error: "PARSE_ERROR", message: "Could not parse AI response.", raw: llmRes.text };
+  let llm = parseGeminiJson(llmRes.text);
+  if (!llm) {
+    console.warn("[Lyza] Primary parse failed. Raw response (first 800 chars):", llmRes.text.slice(0, 800));
+    // Retry once with a simpler "JSON only" reminder. Most failures are
+    // truncated JSON or LLM prose around the object.
+    const retry = await callGemini({
+      apiKey, system,
+      messages: [
+        { role: "user", content: userContent },
+        { role: "assistant", content: llmRes.text },
+        { role: "user", content: "Your previous response was not valid JSON or was truncated. Re-emit ONLY a complete valid JSON object that matches the schema. No markdown, no code fences, no prose." }
+      ],
+      maxTokens: 4000,
+      jsonMode: true
+    });
+    if (!retry.error) llm = parseGeminiJson(retry.text);
+    if (!llm) {
+      console.warn("[Lyza] Retry also failed. Raw retry (first 800 chars):", retry.text?.slice(0, 800));
+      return {
+        error: "PARSE_ERROR",
+        message: "Lyza couldn't read this page (the AI returned malformed data). Try a more specific page like a single listing.",
+        raw: (llmRes.text || "").slice(0, 400)
+      };
+    }
   }
 
   // Fuse risk: deterministic + live signals + LLM content score
@@ -343,7 +388,7 @@ Page title: ${pageData.title}
 
 Extracted content:
 """
-${pageData.text.slice(0, 12000)}
+${pageData.text.slice(0, 8000)}
 """${memBlock}
 
 Analyze it as Lyza and return the JSON.`;
@@ -717,7 +762,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // Tool-call results routed back from content scripts to pending invokes.
   if (msg.type === "LYZA_TOOL_RESULT") {
     if (typeof tools.resolvePending === "function") {
-      tools.resolvePending(sender.tab?.id, msg.callId, msg.result);
+      tools.resolvePending(msg.callId, msg.result);
     }
     sendResponse({ ok: true });
     return false;

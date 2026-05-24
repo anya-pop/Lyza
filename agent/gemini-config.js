@@ -33,7 +33,7 @@ export const GEMINI = {
   }
 };
 
-const DEFAULT_API_KEY = "AIzaSyCcgjZJSlKpVY-YmcbMltjtLKXY73MzCV8";
+const DEFAULT_API_KEY = "YOUR_GEMINI_API_KEY";
 
 export async function getGeminiKey() {
   try {
@@ -48,7 +48,7 @@ function extractGeminiText(data) {
   const cand = (data?.candidates || [])[0];
   if (!cand) return "";
   const parts = cand.content?.parts || [];
-  return parts.filter((p) => !p.thought).map((p) => p.text || "").join("\n").trim();
+  return parts.map((p) => p.text || "").join("\n").trim();
 }
 
 // callGemini — same wire format as background/service-worker.js, but takes a
